@@ -15,6 +15,7 @@ const Sockets = require('../socketManager');
 const Settings = require('../settings');
 const ethereumNode = require('../ethereumNode');
 const ethereumNodeRemote = require('../ethereumNodeRemote');
+const Windows = require('../windows');
 
 const ERRORS = {
   INVALID_PAYLOAD: {
@@ -239,6 +240,8 @@ class IpcProviderBackend {
    * @param {String} state The new state.
    */
   _onNodeStateChanged(state) {
+    const mainWindow = Windows.getByType('main');
+
     switch (
       state // eslint-disable-line default-case
     ) {
@@ -270,6 +273,15 @@ class IpcProviderBackend {
           log.error('Error disconnecting sockets', err);
         });
 
+        break;
+      case ethereumNode.STATES.CONNECTED:
+        this._emitEthereumProviderEvent('mistAPI_event_connect');
+        break;
+      case ethereumNode.STATES.STOPPED:
+        this._emitEthereumProviderEvent('mistAPI_event_close', [
+          1000,
+          'Node stopped'
+        ]);
         break;
     }
   }
@@ -672,6 +684,26 @@ class IpcProviderBackend {
         owner.send('ipcProvider-data', JSON.stringify(res));
       }
     }
+  }
+
+  _emitEthereumProviderEvent(event, data) {
+    const tabs = db.getCollection('UI_tabs');
+    const webviewIds = [];
+    tabs.data.forEach(tab => {
+      if (tab.webviewId) {
+        webviewIds.push(tab.webviewId);
+      }
+    });
+    if (webviewIds.length === 0) {
+      return;
+    }
+    const mainWindow = Windows.getByType('main');
+    if (!mainWindow) {
+      return;
+    }
+    webviewIds.forEach(id => {
+      mainWindow.send('uiAction_windowMessage', event, id, null, data);
+    });
   }
 }
 

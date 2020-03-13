@@ -15,12 +15,12 @@ import React from 'react';
 import { render } from 'react-dom';
 import { Provider } from 'react-redux';
 import About from '../../components/About';
-import RequestAccount from '../../components/RequestAccount';
+import CreateAccount from '../../components/CreateAccount';
 import SendTx from '../../components/SendTx/';
 
 const COMPONENTS = {
   About,
-  RequestAccount,
+  CreateAccount,
   SendTx
 };
 
@@ -82,7 +82,7 @@ Template.body.helpers({
       const renderWindow = location.hash.match(/#([a-zA-Z]*)_?/);
 
       // TODO: handle React components
-      const REACT_COMPONENTS = ['about', 'requestAccount', 'sendTx'];
+      const REACT_COMPONENTS = ['about', 'createAccount', 'sendTx'];
       if (REACT_COMPONENTS.includes(renderWindow[1])) {
         return false;
       }

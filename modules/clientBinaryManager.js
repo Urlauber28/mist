@@ -1,5 +1,4 @@
 const _ = require('./utils/underscore.js');
-const Q = require('bluebird');
 const fs = require('fs');
 const { app, dialog } = require('electron');
 const got = require('got');
@@ -8,6 +7,7 @@ const Settings = require('./settings');
 const Windows = require('./windows');
 const ClientBinaryManager = require('ethereum-client-binaries').Manager;
 const EventEmitter = require('events').EventEmitter;
+const Q = require('bluebird');
 
 const log = require('./utils/logger').create('ClientBinaryManager');
 

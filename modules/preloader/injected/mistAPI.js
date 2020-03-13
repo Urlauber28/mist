@@ -54,20 +54,23 @@
      */
   const mist = {
     callbacks: {},
+    promises: { requestAccounts: [], createAccount: [] },
     version: '__version__',
     license: '__license__',
     platform: '__platform__',
-    requestAccount(callback) {
-      if (callback) {
-        if (!this.callbacks.connectAccount) {
-          this.callbacks.connectAccount = [];
-        }
-        this.callbacks.connectAccount.push(callback);
-      }
-
-      postMessage({
-        type: 'mistAPI_requestAccount'
+    requestAccounts() {
+      const promise = new Promise((resolve, reject) => {
+        this.promises.requestAccounts.push({ resolve, reject });
       });
+      postMessage({ type: 'mistAPI_requestAccounts' });
+      return promise;
+    },
+    createAccount() {
+      const promise = new Promise((resolve, reject) => {
+        this.promises.createAccount.push({ resolve, reject });
+      });
+      postMessage({ type: 'mistAPI_createAccount' });
+      return promise;
     },
     solidity: {
       version: '__solidityVersion__'
@@ -252,13 +255,37 @@
         mist.menu.entries[id].callback();
       }
     } else if (data.type === 'uiAction_windowMessage') {
-      var params = data.message;
+      const message = data.message;
+      const { type, error, value } = message;
 
-      if (mist.callbacks[params.type]) {
-        mist.callbacks[params.type].forEach(function(cb) {
-          cb(params.error, params.value);
+      if (mist.callbacks[type]) {
+        mist.callbacks[type].forEach((callback, index) => {
+          callback(error, value);
+          mist.callbacks[type].splice(index, 1); // remove callback
         });
-        delete mist.callbacks[params.type];
+      }
+
+      if (mist.promises[type]) {
+        mist.promises[type].forEach((promise, index) => {
+          if (error) {
+            promise.reject(error);
+          } else {
+            promise.resolve(value);
+          }
+          mist.promises[type].splice(index, 1); // remove promise
+        });
+      }
+
+      if (window.ethereum && !error) {
+        if (type === 'requestAccounts') {
+          window.ethereum._emitAccountsChanged(value);
+        } else if (type === 'networkChanged') {
+          window.ethereum._emitNetworkChanged(value);
+        } else if (type === 'mistAPI_event_connect') {
+          window.ethereum._emitConnect();
+        } else if (type === 'mistAPI_event_close') {
+          window.ethereum._emitClose(value[0], value[1]);
+        }
       }
     }
   });

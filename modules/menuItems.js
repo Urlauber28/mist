@@ -54,7 +54,6 @@ const restartNode = function(newType, newNetwork, syncMode, webviews) {
   return ethereumNode
     .restart(newType, newNetwork, syncMode)
     .then(() => {
-      Windows.getByType('main').load(global.interfaceAppUrl);
       createMenu(webviews);
       log.info('Node switch successful.');
     })
@@ -258,7 +257,7 @@ let menuTempl = function(webviews) {
         label: i18n.t('mist.applicationMenu.file.newAccount'),
         accelerator: 'CommandOrControl+N',
         click() {
-          Windows.createPopup('requestAccount');
+          Windows.createPopup('createAccount');
         }
       },
       {

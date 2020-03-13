@@ -1,5 +1,4 @@
 const _ = require('../../utils/underscore.js');
-const Q = require('bluebird');
 const log = require('../../utils/logger').create('method');
 const Windows = require('../../windows');
 const db = require('../../db');
@@ -243,5 +242,47 @@ module.exports = class BaseProcessor {
       err.message = err.message.replace('__method__', `"${payload.method}"`);
       payload.error = err;
     }
+
+    // only allow actions for authorized accounts
+    const methods = [
+      'eth_sendTransaction',
+      'eth_sign',
+      'eth_signTransaction',
+      'shh_post',
+      'shh_getMessages'
+    ];
+    if (methods.includes(payload.method)) {
+      const fromAddress = payload.params[0].from;
+      if (!this._accountHasPermission(fromAddress, conn)) {
+        const error = new Error('Unauthorized');
+        error.code = 4100;
+        payload.error = error;
+      }
+    }
+  }
+  _accountHasPermission(address, conn) {
+    if (this._isAdminConnection(conn)) {
+      return true;
+    }
+
+    const tab = db.getCollection('UI_tabs').findOne({ webviewId: conn.id });
+
+    if (
+      !tab ||
+      !tab.permissions ||
+      !tab.permissions.accounts ||
+      tab.permissions.accounts.length === 0
+    ) {
+      return false;
+    }
+
+    const lowercaseAccounts = tab.permissions.accounts.map(a => {
+      return a.toLowerCase();
+    });
+    if (!lowercaseAccounts.includes(address.toLowerCase())) {
+      return false;
+    }
+
+    return true;
   }
 };

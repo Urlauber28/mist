@@ -3,8 +3,8 @@ import { render } from 'react-dom';
 import { Provider } from 'react-redux';
 import { getLanguage } from './actions.js';
 import About from '../components/About';
-import RequestAccount from '../components/RequestAccount';
-import NodeInfo from '../components/NodeInfo/';
+import CreateAccount from '../components/CreateAccount';
+import NodeInfo from '../components/NodeInfo';
 import SendTx from '../components/SendTx/';
 import TxHistory from '../components/TxHistory/';
 
@@ -43,7 +43,7 @@ function initTabs() {
     );
 
     if (!Tabs.findOne('browser')) {
-      const url = 'https://www.stateofthedapps.com';
+      const url = 'about:blank';
       Tabs.insert({
         _id: 'browser',
         url,
@@ -78,7 +78,7 @@ function renderReactComponentPopup(locationHash) {
   // JSX can't evaluate an expression or string, so map imported components here
   const components = {
     About,
-    RequestAccount,
+    CreateAccount,
     SendTx,
     TxHistory
   };

@@ -45,6 +45,9 @@ Template['layout_browserBar'].helpers({
   dapp: function() {
     return Tabs.findOne(LocalStore.get('selectedTab'));
   },
+  isUrlAboutBlank: function() {
+    return this.url === 'about:blank';
+  },
   /**
     Returns dapps current accounts
 
@@ -117,20 +120,26 @@ Template['layout_browserBar'].events({
 
     @event click .app-bar > button.accounts'
     */
-  'click .app-bar > button.accounts': function(e, template) {
+  'click .app-bar > button.accounts': function() {
     LocalStore.set('chosenTab', LocalStore.get('selectedTab')); // needed by connectAccount
-    mist.requestAccount(function(e, addresses) {
-      var tabId = LocalStore.get('selectedTab');
 
-      dbSync.syncDataFromBackend(LastVisitedPages);
-      dbSync.syncDataFromBackend(Tabs).then(function() {
-        Tabs.update(tabId, {
-          $set: {
-            'permissions.accounts': addresses
-          }
+    mist
+      .requestAccounts()
+      .then(accounts => {
+        var tabId = LocalStore.get('selectedTab');
+
+        dbSync.syncDataFromBackend(LastVisitedPages);
+        dbSync.syncDataFromBackend(Tabs).then(function() {
+          Tabs.update(tabId, {
+            $set: {
+              'permissions.accounts': accounts
+            }
+          });
         });
+      })
+      .catch(error => {
+        console.error(`Error from .app-bar: ${error}`); // eslint-disable-line no-console
       });
-    });
   },
   /*
     Hide the app bar on input blur
@@ -145,7 +154,11 @@ Template['layout_browserBar'].events({
 
     @event mouseenter .app-bar
     */
-  'mouseenter .app-bar': function(e, template) {
+  'mouseenter .app-bar': function(event, template) {
+    if (template.$('.url-input')[0].value == 'about:blank') {
+      template.$('.url-input')[0].value = 'https://';
+    }
+
     clearTimeout(TemplateVar.get('timeoutId'));
   },
   /*

@@ -55,15 +55,13 @@ window.addEventListener('message', function message(event) {
   }
 
   // EthereumProvider: connect
-  if (data.type === 'create') {
+  if (data.type === 'mistAPI_ethereum_provider_connect') {
     ipcRenderer.send('ipcProvider-create');
 
     // EthereumProvider: write
-  } else if (data.type === 'write') {
-    let messageIsArray = _.isArray(data.message);
-
-    // only accept valid JSON rpc requests
-    if (messageIsArray) {
+  } else if (data.type === 'mistAPI_ethereum_provider_write') {
+    // Only accept valid JSON-RPC requests
+    if (_.isArray(data.message)) {
       for (let i = 0; i < data.message.length; i++) {
         if (isValidJsonRpc(data.message[i])) {
           data.message[i] = sanatizeJsonRpc(data.message[i]);
@@ -78,13 +76,14 @@ window.addEventListener('message', function message(event) {
         return;
       }
     }
-
-    // make sure we only send allowed properties
+    // Make sure we only send allowed properties
     ipcRenderer.send('ipcProvider-write', JSON.stringify(data.message));
-
-    // mistAPI
   } else if (/^mistAPI_[a-z]/i.test(data.type)) {
-    if (data.type === 'mistAPI_requestAccount') {
+    // Mist API
+    if (
+      data.type === 'mistAPI_requestAccounts' ||
+      data.type === 'mistAPI_createAccount'
+    ) {
       ipcRenderer.send(data.type, data.message);
     } else {
       ipcRenderer.sendToHost(data.type, data.message);
@@ -92,7 +91,7 @@ window.addEventListener('message', function message(event) {
   }
 });
 
-const postMessage = function(payload) {
+const postMessage = payload => {
   if (typeof payload === 'object') {
     payload = JSON.stringify(payload);
   }
@@ -104,21 +103,17 @@ const postMessage = function(payload) {
 };
 
 // custom Events
-['uiAction_windowMessage', 'mistAPI_callMenuFunction'].forEach(function(type) {
-  ipcRenderer.on(type, function onIpcRenderer(e, result) {
-    // this type needs special packaging
-    if (type === 'uiAction_windowMessage') {
-      result = {
-        type: arguments[1],
-        error: arguments[2],
-        value: arguments[3]
-      };
-    }
+ipcRenderer.on('uiAction_windowMessage', (event, type, error, value) => {
+  postMessage({
+    type: 'uiAction_windowMessage',
+    message: { type, error, value }
+  });
+});
 
-    postMessage({
-      type: type,
-      message: result
-    });
+ipcRenderer.on('mistAPI_callMenuFunction', (event, result) => {
+  postMessage({
+    type: 'mistAPI_callMenuFunction',
+    message: result
   });
 });
 

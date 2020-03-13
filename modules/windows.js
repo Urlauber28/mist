@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain: ipc } = require('electron');
 const Settings = require('./settings');
 const log = require('./utils/logger').create('Windows');
+const db = require('./db');
 const EventEmitter = require('events').EventEmitter;
 import {
   closeWindow,
@@ -445,7 +446,7 @@ class Windows {
             alwaysOnTop: true
           }
         };
-      case 'requestAccount':
+      case 'createAccount':
         return {
           electronOptions: {
             width: 420,
@@ -453,7 +454,7 @@ class Windows {
             alwaysOnTop: true
           }
         };
-      case 'connectAccount':
+      case 'connectAccounts':
         return {
           electronOptions: {
             width: 460,
@@ -577,7 +578,8 @@ class Windows {
       'remix',
       'updateAvailable',
       'clientUpdateAvailable',
-      'connectAccount',
+      'connectAccounts',
+      'createAccount',
       'sendTx',
       'txHistory'
     ];
@@ -648,10 +650,28 @@ class Windows {
   _onWindowClosed(wnd) {
     log.debug(`Removing window from list: ${wnd.type}`);
 
+    // If connectAccounts or createAccount, return error if user denied
+    if (wnd.type === 'connectAccounts' || wnd.type === 'createAccount') {
+      const tab = db
+        .getCollection('UI_tabs')
+        .findOne({ webviewId: wnd.ownerId });
+      if (
+        !tab ||
+        !tab.permissions ||
+        !tab.permissions.accounts ||
+        tab.permissions.accounts.length === 0
+      ) {
+        if (wnd.type === 'connectAccounts') {
+          this.mistAPIEmitUserDeniedFullProvider(wnd.ownerId);
+        } else if (wnd.type === 'createAccount') {
+          this.mistAPIEmitUserDeniedCreateAccount(wnd.ownerId);
+        }
+      }
+    }
+
     for (const t in this._windows) {
       if (this._windows[t] === wnd) {
         delete this._windows[t];
-
         break;
       }
     }
@@ -664,6 +684,33 @@ class Windows {
       log.info('All primary windows closed/invisible, so quitting app...');
 
       app.quit();
+    }
+  }
+
+  mistAPIEmitUserDeniedFullProvider(webviewId) {
+    const mainWindow = this.getByType('main');
+    if (mainWindow) {
+      var error = new Error('User Denied Full Provider');
+      error.code = 4001;
+      mainWindow.send(
+        'uiAction_windowMessage',
+        'requestAccounts',
+        webviewId,
+        error
+      );
+    }
+  }
+  mistAPIEmitUserDeniedCreateAccount(webviewId) {
+    const mainWindow = this.getByType('main');
+    if (mainWindow) {
+      var error = new Error('User Denied Create Account');
+      error.code = 4010;
+      mainWindow.send(
+        'uiAction_windowMessage',
+        'createAccount',
+        webviewId,
+        error
+      );
     }
   }
 }

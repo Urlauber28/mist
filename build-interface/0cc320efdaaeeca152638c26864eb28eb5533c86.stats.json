@@ -3,8 +3,8 @@
     "name": "standard-minifier-js",
     "version": "2.3.4"
   },
-  "totalMinifiedBytes": 3382536,
-  "totalMinifiedGzipBytes": 930243,
+  "totalMinifiedBytes": 3382141,
+  "totalMinifiedGzipBytes": 930455,
   "minifiedBytesByPackage": {
     "packages/meteor.js": 9433,
     "packages/less.js": 24,
@@ -900,7 +900,7 @@
     ],
     "app/global-imports.js": 1705,
     "app/app.js": [
-      1116968,
+      1116573,
       {
         "client": {
           "templates": {
@@ -909,39 +909,39 @@
               "img.js": 240
             },
             "layout": {
-              "template.browserBar.js": 3659,
-              "template.sidebar.js": 6169,
-              "template.webviews.js": 804,
+              "template.browserBar.js": 3416,
+              "template.sidebar.js": 5418,
+              "template.webviews.js": 780,
               "template.main.js": 329,
-              "browserBar.js": 1766,
-              "sidebar.js": 2645,
+              "browserBar.js": 1964,
+              "sidebar.js": 2624,
               "webviews.js": 686
             },
             "popupWindows": {
               "template.clientUpdateAvailable.js": 2941,
-              "template.connectAccount.js": 4738,
+              "template.connectAccounts.js": 4855,
               "template.generic.js": 164,
               "template.importAccount.js": 2939,
               "template.loadingWindow.js": 287,
               "template.updateAvailable.js": 3310,
               "clientUpdateAvailable.js": 222,
-              "connectAccount.js": 2216,
+              "connectAccounts.js": 2379,
               "generic.js": 70,
               "importAccount.js": 2246,
               "updateAvailable.js": 577
             },
             "views": {
               "template.webview.js": 1356,
-              "webview.js": 2492
+              "webview.js": 2510
             },
             "template.index.js": 644,
-            "index.js": 1122,
+            "index.js": 1119,
             "webviewEvents.js": 1598
           },
           "lib": {
             "ethereum": {
               "helpers": {
-                "helperFunctions.js": 2881,
+                "helperFunctions.js": 2936,
                 "templateHelpers.js": 1335
               },
               "1_web3js_init.js": 109
@@ -950,7 +950,7 @@
             "thirdParty.js": 207
           },
           "actions.js": 321,
-          "appStart.js": 2146,
+          "appStart.js": 2123,
           "collections.js": 385,
           "mistAPIBackend.js": 1819,
           "windowEvents.js": 980
@@ -973,8 +973,8 @@
             "index.js": 1777
           },
           "About.js": 928,
-          "DappIdenticon.js": 803,
-          "RequestAccount.js": 2850
+          "CreateAccount.js": 2927,
+          "DappIdenticon.js": 803
         },
         "i18n": {
           "app.ca.i18n.json": 282,
@@ -995,7 +995,7 @@
           "app.zh.i18n.json": 110,
           "mist.ca.i18n.json": 111,
           "mist.de.i18n.json": 110,
-          "mist.en.i18n.json": 9959,
+          "mist.en.i18n.json": 9999,
           "mist.es.i18n.json": 120,
           "mist.fa.i18n.json": 114,
           "mist.fr.i18n.json": 121,

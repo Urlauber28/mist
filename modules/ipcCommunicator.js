@@ -13,31 +13,15 @@ const appMenu = require('./menuItems');
 const Settings = require('./settings');
 const ethereumNode = require('./ethereumNode.js');
 const keyfileRecognizer = require('ethereum-keyfile-recognizer');
+const db = require('./db');
 
 import { getLanguage } from './core/settings/actions';
 
 const log = logger.create('ipcCommunicator');
 
 require('./abi.js');
-/*
 
-// windows including webviews
-windows = {
-    23: {
-        type: 'requestWindow',
-        window: obj,
-        owner: 12
-    },
-    12: {
-        type: 'webview'
-        window: obj
-        owner: null
-    }
-}
-
-*/
-
-// UI ACTIONS
+// UI action
 ipc.on('backendAction_closeApp', () => {
   app.quit();
 });
@@ -54,6 +38,7 @@ ipc.on('backendAction_closePopupWindow', e => {
     senderWindow.close();
   }
 });
+
 ipc.on('backendAction_setWindowSize', (e, width, height) => {
   const windowId = e.sender.id;
   const senderWindow = Windows.getById(windowId);
@@ -81,17 +66,24 @@ ipc.on('backendAction_windowCallback', (e, value1, value2, value3) => {
   }
 });
 
-ipc.on('backendAction_windowMessageToOwner', (e, error, value) => {
-  const windowId = e.sender.id;
+ipc.on('backendAction_windowMessageToOwner', (event, error, value) => {
+  const windowId = event.sender.id;
   const senderWindow = Windows.getById(windowId);
 
-  // If msg is from a generic window, use the "actingType" instead of type
-  const senderWindowType = senderWindow.actingType || senderWindow.type;
+  if (!senderWindow) {
+    return;
+  }
+
+  // If msg is from a generic window, use `actingType` instead of type
+  var senderWindowType = senderWindow.actingType || senderWindow.type;
+
+  // Rename window type for mistAPI
+  if (senderWindowType === 'connectAccounts') {
+    senderWindowType = 'requestAccounts';
+  }
 
   if (senderWindow.ownerId) {
     const ownerWindow = Windows.getById(senderWindow.ownerId);
-    const mainWindow = Windows.getByType('main');
-
     if (ownerWindow) {
       ownerWindow.send(
         'uiAction_windowMessage',
@@ -101,7 +93,8 @@ ipc.on('backendAction_windowMessageToOwner', (e, error, value) => {
       );
     }
 
-    // send through the mainWindow to the webviews
+    // Send through the mainWindow to the webviews
+    const mainWindow = Windows.getByType('main');
     if (mainWindow) {
       mainWindow.send(
         'uiAction_windowMessage',
@@ -129,7 +122,7 @@ ipc.on('backendAction_stopWebviewNavigation', (e, id) => {
   e.returnValue = true;
 });
 
-// check wallet file
+// Check wallet file
 ipc.on('backendAction_checkWalletFile', (e, path) => {
   fs.readFile(path, 'utf8', (event, data) => {
     try {
@@ -197,7 +190,7 @@ ipc.on('backendAction_checkWalletFile', (e, path) => {
   });
 });
 
-// import presale wallet
+// Import presale wallet
 ipc.on('backendAction_importWalletFile', (e, path, pw) => {
   const spawn = require('child_process').spawn; // eslint-disable-line global-require
   const ClientBinaryManager = require('./clientBinaryManager'); // eslint-disable-line global-require
@@ -235,7 +228,7 @@ ipc.on('backendAction_importWalletFile', (e, path, pw) => {
         e.sender.send('uiAction_importedWalletFile', data);
       }
 
-      // if not stop, so we don't kill the process
+      // If not stop, so we don't kill the process
     } else {
       return;
     }
@@ -245,7 +238,7 @@ ipc.on('backendAction_importWalletFile', (e, path, pw) => {
     nodeProcess.kill('SIGINT');
   });
 
-  // file password
+  // File password
   setTimeout(() => {
     if (!error) {
       nodeProcess.stdin.write(`${pw}\n`);
@@ -254,27 +247,80 @@ ipc.on('backendAction_importWalletFile', (e, path, pw) => {
   }, 2000);
 });
 
-const createAccountPopup = e => {
-  Windows.createPopup('requestAccount', { ownerId: e.sender.id });
-};
+// Mist API
+ipc.on('mistAPI_createAccount', event => {
+  Windows.createPopup('createAccount', { ownerId: event.sender.id });
+});
 
-// MIST API
-ipc.on('mistAPI_createAccount', createAccountPopup);
+ipc.on('mistAPI_requestAccounts', async event => {
+  let accounts;
 
-ipc.on('mistAPI_requestAccount', e => {
-  if (global.mode === 'wallet') {
-    createAccountPopup(e);
-  } else {
-    // Mist
-    // if coming from wallet, skip connect, go straight to create
-    if (e.sender.history[0].includes(`file://${dirname}/wallet/index.html`)) {
-      createAccountPopup(e);
-    } else {
-      Windows.createPopup('connectAccount', { ownerId: e.sender.id });
+  const tab = db
+    .getCollection('UI_tabs')
+    .findOne({ webviewId: event.sender.id });
+
+  if (tab && tab.permissions) {
+    if (tab.permissions.accounts) {
+      // Return permissioned accounts
+      accounts = tab.permissions.accounts;
+    } else if (tab.permissions.admin) {
+      // If admin tab, return all accounts
+      try {
+        const result = await ethereumNode.send('eth_accounts');
+        accounts = result.result;
+      } catch (error) {
+        log.error(
+          `Error from mistAPI_requestAccounts eth_accounts call: ${error}`
+        );
+      }
     }
+  }
+
+  if (accounts && accounts.length > 0) {
+    event.sender.send(
+      'uiAction_windowMessage',
+      'requestAccounts',
+      null,
+      accounts
+    );
+  } else {
+    Windows.createPopup('connectAccounts', { ownerId: event.sender.id });
   }
 });
 
+ipc.on('mistAPI_emit_accountsChanged', (event, webviewId, accounts) => {
+  const mainWindow = Windows.getByType('main');
+  if (mainWindow) {
+    mainWindow.send(
+      'uiAction_windowMessage',
+      'requestAccounts',
+      webviewId,
+      null,
+      accounts
+    );
+  }
+});
+
+ipc.on('mistAPI_emit_userDeniedCreateAccount', (event, webviewId) => {
+  const mainWindow = Windows.getByType('main');
+  if (mainWindow) {
+    const error = new Error('User Denied Create Account');
+    error.code = 4401;
+    mainWindow.send(
+      'uiAction_windowMessage',
+      'createAccount',
+      webviewId,
+      error
+    );
+  }
+});
+
+// Reload tab
+ipc.on('backendAction_reloadSelectedTab', event => {
+  event.sender.send('uiAction_reloadSelectedTab');
+});
+
+// Logging
 const uiLoggers = {};
 
 ipc.on('console_log', (event, id, logLevel, logItemsStr) => {
@@ -291,8 +337,4 @@ ipc.on('console_log', (event, id, logLevel, logItemsStr) => {
   } catch (err) {
     log.error(err);
   }
-});
-
-ipc.on('backendAction_reloadSelectedTab', event => {
-  event.sender.send('uiAction_reloadSelectedTab');
 });
